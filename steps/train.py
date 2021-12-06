@@ -1,133 +1,84 @@
-"""
-The MIT License
-
-Copyright (c) 2018-2020 Mark Douthwaite
-"""
 
 import time
 import json
-import uuid
 from datetime import datetime
-from typing import Optional, List, Any
+from typing import Optional, Any
 
 import fire
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.pipeline import Pipeline
-from sklearn.impute import SimpleImputer
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, roc_auc_score
+
+from sklearn.metrics import mean_squared_error
+from statsmodels.tsa.vector_ar.vecm import coint_johansen
+from statsmodels.tsa.vector_ar.var_model import VAR
+
+import warnings
+warnings.simplefilter(action='ignore')
 
 
 np.random.seed(42)
 
 TIMESTAMP_FMT = "%m-%d-%Y, %H:%M:%S"
 
-LABEL: str = "target"
-
-NUMERIC_FEATURES: List[str] = [
-    "age",
-    "trestbps",
-    "chol",
-    "fbs",
-    "thalach",
-    "exang",
-    "oldpeak",
-]
-
-CATEGORICAL_FEATURES: List[str] = ["sex", "cp", "restecg", "ca", "slope", "thal"]
-
-
-def create_pipeline(
-    categorical_features: List[str], numeric_features: List[str]
-) -> Pipeline:
-
-    numeric_transformer = Pipeline(
-        steps=[
-            ("imputer", SimpleImputer(strategy="median")),
-            ("scaler", StandardScaler()),
-        ]
-    )
-
-    categorical_transformer = Pipeline(
-        steps=[
-            ("imputer", SimpleImputer(strategy="constant")),
-            ("onehot", OneHotEncoder(handle_unknown="ignore")),
-        ]
-    )
-
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ("num", numeric_transformer, numeric_features),
-            ("cat", categorical_transformer, categorical_features),
-        ]
-    )
-
-    return Pipeline(
-        steps=[("preprocessor", preprocessor), ("classifier", LogisticRegression())]
-    )
-
 
 def train(
     path: str,
-    test_size: float = 0.2,
     tag: str = "",
     dump: bool = True,
-    categorical_features: Optional[List[str]] = None,
-    numeric_features: Optional[List[str]] = None,
-    label: Optional[str] = None,
     **kwargs: Optional[Any],
 ) -> None:
 
     start = time.time()
 
-    if categorical_features is None:
-        categorical_features = CATEGORICAL_FEATURES
+    df = pd.read_csv(path, parse_dates=['Time'], index_col='Time', **kwargs)
+    
+    # missing value treatment
+    df['SiteB'][df['SiteB'] == 0] = df['SiteB'].mean()
+    
+    # checking stationarity 
+    cj_stat = coint_johansen(df,-1,1).eig
+    
+    # creating the train and validation set
+    nobs = 1
+    df_train, df_test = df[0:-nobs], df[-nobs:]
+    
+    # fit the model
+    model = VAR(df_train)
+    model_fit = model.fit()
+    
+    # Input data for forecasting
+    forecast_input = df_train.values[-nobs:]
 
-    if numeric_features is None:
-        numeric_features = NUMERIC_FEATURES
-
-    if label is None:
-        label = LABEL
-
-    df = pd.read_csv(path, **kwargs)
-
-    features = df[[*categorical_features, *numeric_features]]
-    target = df[label]
-
-    tx, vx, ty, vy = train_test_split(features, target, test_size=test_size)
-
-    model = create_pipeline(
-        categorical_features=categorical_features, numeric_features=numeric_features
-    )
-    model.fit(tx, ty)
-
+    # Forecast
+    fc = model_fit.forecast(y=forecast_input, steps=nobs)
+    df_forecast = pd.DataFrame(fc, index=df.index[-nobs:], columns=df.columns)
+    
+    # check rmse
+    result = dict()
+    for i in df.columns: 
+        result[f'{i} RMSE'] = np.sqrt(mean_squared_error(df_forecast[i], df_test[i]))
+    # print(f"RMSE: {result}")
+    
     end = time.time()
-
-    acc = accuracy_score(model.predict(tx), ty)*100
-    val_acc = accuracy_score(model.predict(vx), vy)*100
-    roc_auc = roc_auc_score(vy, model.predict_proba(vx)[:, -1])
-
-    print(f"Training accuracy: {acc:.2f}%")
-    print(f"Validation accuracy: {val_acc:.2f}%")
-    print(f"ROC AUC score: {roc_auc:.2f}")
 
     metrics = dict(
         elapsed = end - start,
-        acc = acc,
-        val_acc = val_acc,
-        roc_auc = roc_auc,
+        cj_stat = cj_stat.tolist(),
         timestamp = datetime.now().strftime(TIMESTAMP_FMT)
     )
 
+    result.update(metrics)
+    
+    print(f'Metrics: {result}')
+    
+    # fit the model on full dataset
+    model_full = VAR(df) 
+    
     if dump:
-        joblib.dump(model, f"artifacts/pipeline{tag}.joblib")
-        json.dump(metrics, open(f"artifacts/metrics{tag}.json", "w"))
+        joblib.dump(model_full, f"artifacts/model{tag}.joblib")
+        json.dump(result, open(f"artifacts/metrics{tag}.json", "w"))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": 
     fire.Fire(train)

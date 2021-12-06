@@ -1,29 +1,25 @@
-"""
-The MIT License
-
-Copyright (c) 2018-2020 Mark Douthwaite
-"""
 
 from typing import Callable, Any
-
+import pandas as pd
 import flask
 import joblib
-from sklearn.pipeline import Pipeline
+# from sklearn.pipeline import Pipeline 
+from statsmodels.tsa.vector_ar.var_model import VAR
 
-import pandas as pd
+import warnings
+warnings.simplefilter(action='ignore')
 
 
 def init_predict_handler(tag: str = "") -> Callable[[flask.Request], Any]:
 
-    model: Pipeline = joblib.load(f"artifacts/pipeline{tag}.joblib")
-    statuses = {0: "clear", 1: "heart-disease"}
+    model: VAR = joblib.load(f"artifacts/model{tag}.joblib")  
 
-    def handler(request: flask.Request) -> Any:
-        request_json = request.get_json()
-        df = pd.DataFrame.from_records([request_json])
-        yh = model.predict(df)
-
-        return flask.jsonify(dict(diagnosis=statuses[int(yh[0])]))
+    def handler() -> Any:
+        # request_json = request.get_json()
+        model_fit = model.fit() 
+        yhat = model_fit.forecast(model_fit.y, steps=1)
+        
+        return flask.jsonify(dict(forecast=yhat.tolist())) 
 
     return handler
 
