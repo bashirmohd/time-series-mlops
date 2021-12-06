@@ -27,7 +27,7 @@ jobs:
       #   version: '290.0.1'
         project_id: ${{ secrets.GCP_PROJECT_ID }}
         service_account_email: ${{ secrets.SERVICE_EMAIL }}
-      #   # service_account_key: ${{ secrets.GCP_SA_KEY }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }} 
         export_default_credentials: true
     
     - name: Set up Python ${{ matrix.python-version }}
