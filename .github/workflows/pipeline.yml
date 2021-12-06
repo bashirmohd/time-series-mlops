@@ -42,7 +42,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt 
     
-    - name: Download the latest datasets
+    - name: Download the latest dataset
       run: |
         gsutil cp gs://time-series-example/time-series/throughput_metrics.csv datasets/throughput_metrics.csv
 
