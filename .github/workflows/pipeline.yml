@@ -13,22 +13,27 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - id: auth
-      uses: google-github-actions/auth@v0.4.0
-      with:
-        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
-
-    - name: Use gcloud CLI
-      run: gcloud info 
-
     - name: Setup GCP client
       uses: google-github-actions/setup-gcloud@v0.3.0
       with:
       #   version: '290.0.1'
         project_id: ${{ secrets.GCP_PROJECT_ID }}
-        service_account_email: ${{ secrets.SERVICE_EMAIL }}
-        service_account_key: ${{ secrets.GCP_SA_KEY }} 
-        export_default_credentials: true
+        # service_account_email: ${{ secrets.SERVICE_EMAIL }}
+        # service_account_key: ${{ secrets.GCP_SA_KEY }} 
+        # export_default_credentials: true
+
+    - id: auth
+      uses: google-github-actions/auth@v0.4.0
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - id: 'gcloud'
+      name: 'gcloud'
+      run: |-
+        gcloud auth login --brief --cred-file="${{ steps.auth.outputs.credentials_file_path }}" 
+
+    - name: Use gcloud CLI
+      run: gcloud info 
     
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v2
