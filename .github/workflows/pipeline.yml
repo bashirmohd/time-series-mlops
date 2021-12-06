@@ -22,7 +22,7 @@ jobs:
     #   run: gcloud info 
 
     - name: Setup GCP client
-      uses: google-github-actions/setup-gcloud@v0.2.0
+      uses: google-github-actions/setup-gcloud@v0.3.0
       with:
         version: '290.0.1'
         project_id: ${{ secrets.GCP_PROJECT_ID }}
@@ -39,7 +39,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt 
     
-    - name: Download the latest dataset
+    - name: Download the latest datasets 
       run: |
         gsutil cp gs://time-series-example/time-series/throughput_metrics.csv datasets/throughput_metrics.csv
 
