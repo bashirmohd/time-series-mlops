@@ -8,7 +8,6 @@ app = flask.Flask("CloudFunction")
 
 @app.route("/", methods=["GET", "POST"])
 def predict():
-    return predict_handler()
-
+    return predict_handler(flask.request)
 
 app.run() 

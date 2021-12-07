@@ -14,7 +14,7 @@ def init_predict_handler(tag: str = "") -> Callable[[flask.Request], Any]:
 
     model: VAR = joblib.load(f"artifacts/model{tag}.joblib")  
 
-    def handler() -> Any:
+    def handler(request: flask.Request) -> Any:
         # request_json = request.get_json()
         model_fit = model.fit() 
         yhat = model_fit.forecast(model_fit.y, steps=1)
