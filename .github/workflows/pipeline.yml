@@ -39,7 +39,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt 
     
-    - name: Download the latest datasets 
+    - name: Download the latest dataset
       run: |
         gsutil cp gs://pipeline-automation/time-series/throughput_metrics.csv datasets/throughput_metrics.csv
 
@@ -54,5 +54,5 @@ jobs:
         gsutil cp artifacts/metrics.json gs://pipeline-automation/time-series/models/metrics/${{ env.GITHUB_RUN_ID }}.joblib
 
     - name: Deploy model as Cloud Function
-      run: | 
+      run: |
         gcloud functions deploy time-series --entry-point=predict_handler --runtime=python37 --project=${{ secrets.GCP_PROJECT_ID }} --allow-unauthenticated --trigger-http
