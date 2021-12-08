@@ -7,20 +7,14 @@ on:
   schedule:
     - cron:  '0 8 * * MON-FRI'
 
-jobs:
+jobs: 
   train:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
 
     - name: Setup GCP client
-      uses: google-github-actions/setup-gcloud@master
-      # with:
-      #   version: '290.0.1'
-        # project_id: ${{ secrets.GCP_PROJECT_ID }}
-        # service_account_email: ${{ secrets.SERVICE_EMAIL }}
-        # service_account_key: ${{ secrets.GCP_SA_KEY }} 
-        # export_default_credentials: true
+      uses: google-github-actions/setup-gcloud@master 
 
     - id: auth
       uses: google-github-actions/auth@v0.4.0
@@ -47,17 +41,17 @@ jobs:
     
     - name: Download the latest datasets 
       run: |
-        gsutil cp gs://time-series-example/time-series/throughput_metrics.csv datasets/throughput_metrics.csv
+        gsutil cp gs://pipeline-automation/time-series/throughput_metrics.csv datasets/throughput_metrics.csv
 
     - name: Run training task
       run: |
-        python steps/train.py --path=datasets/throughput_metrics.csv
+        python steps/train.py --path=datasets/throughput_metrics.csv 
 
     - name: Upload new model and associated metrics
       run: |
-        gsutil cp artifacts/model.joblib gs://time-series-example/time-series/models/latest.joblib
-        gsutil cp artifacts/model.joblib gs://time-series-example/time-series/models/${{ env.GITHUB_RUN_ID }}.joblib
-        gsutil cp artifacts/metrics.json gs://time-series-example/time-series/models/metrics/${{ env.GITHUB_RUN_ID }}.joblib
+        gsutil cp artifacts/model.joblib gs://pipeline-automation/time-series/models/latest.joblib
+        gsutil cp artifacts/model.joblib gs://pipeline-automation/time-series/models/${{ env.GITHUB_RUN_ID }}.joblib
+        gsutil cp artifacts/metrics.json gs://pipeline-automation/time-series/models/metrics/${{ env.GITHUB_RUN_ID }}.joblib
 
     - name: Deploy model as Cloud Function
       run: | 
